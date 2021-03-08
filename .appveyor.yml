@@ -1,0 +1,12 @@
+version: '{build}-{branch}'
+image: Visual Studio 2019
+shallow_clone: true
+
+cache:
+  - .build\_PrimalDownloads
+
+build_script:
+  - set BUILD_DIR=%APPVEYOR_BUILD_FOLDER%\.build
+  - cmake -S %APPVEYOR_BUILD_FOLDER% -B %BUILD_DIR% -G "Visual Studio 16 2019" -A x64 -DYTTRIUM_RENDERER=opengl
+  - cmake --build %BUILD_DIR% --parallel --config Debug -- /nologo
+  - cmake --build %BUILD_DIR% --parallel --config Release -- /nologo

@@ -1,0 +1,2 @@
+vertex_shader "data/cube_vs.glsl"
+fragment_shader "data/cube_fs.glsl"

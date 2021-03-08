@@ -1,0 +1,12 @@
+package
+[
+	"data/checkerboard.material"
+	"data/checkerboard.obj"
+	"data/checkerboard_fs.glsl"
+	"data/checkerboard_vs.glsl"
+	"data/cube.material"
+	"data/cube.obj"
+	"data/cube_fs.glsl"
+	"data/cube_vs.glsl"
+	"data/gui.ion"
+]

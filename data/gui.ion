@@ -1,0 +1,22 @@
+title "Yttrium 3D example"
+on_key "f1" {
+	call "debug"
+}
+on_key "f10" {
+	call "screenshot"
+}
+root screen "main" {
+	on_key "esc" {
+		quit
+	}
+	stretch {
+		canvas "world" {
+			track_hover
+		}
+	}
+	right "100" {
+		canvas "minimap" {
+			position "1" "79" "20" "20"
+		}
+	}
+}
