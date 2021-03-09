@@ -9,7 +9,7 @@
 
 namespace Yt
 {
-	class Gui;
+	class IonGui;
 	class RenderPass;
 	struct RenderReport;
 	class ResourceLoader;
@@ -24,7 +24,7 @@ class WorldCanvas;
 class Game
 {
 public:
-	Game(Yt::ResourceLoader&, Yt::Gui&);
+	Game(Yt::ResourceLoader&, Yt::IonGui&);
 	~Game() noexcept;
 
 	void draw_debug_graphics(Yt::RenderPass&, const Yt::Vector2& cursor, const Yt::RenderReport&);

@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <yttrium/application/application.h>
+#include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
 #include <yttrium/gui/gui.h>
+#include <yttrium/gui/ion_gui.h>
 #include <yttrium/image/image.h>
 #include <yttrium/image/utils.h>
 #include <yttrium/logger.h>
@@ -37,33 +39,36 @@ int ymain(int, char**)
 	storage.attach_package("playground3d.ypq");
 	::make_checkerboard_texture(storage, "data/checkerboard.tga");
 
-	Yt::ScriptContext script;
-
 	Yt::Application application;
-
 	Yt::Window window{ application };
 	Yt::Viewport viewport{ window };
-	script.define("screenshot", [&viewport](const Yt::ScriptCall&) { viewport.take_screenshot(); });
 	viewport.on_screenshot([](Yt::Image&& image) { image.save_as_screenshot(Yt::ImageFormat::Jpeg, 90); });
 
 	Yt::ResourceLoader resource_loader{ storage, &viewport.render_manager() };
 
-	Yt::Gui gui{ "data/gui.ion", resource_loader, script };
-	window.on_key_event([&gui](const Yt::KeyEvent& event) { gui.process_key_event(event); });
-	gui.on_quit([&window] { window.close(); });
+	Yt::GuiState gui_state;
+	window.on_key_event([&gui_state](const Yt::KeyEvent& event) { gui_state.processKeyEvent(event); });
 
-	Game game{ resource_loader, gui };
-	script.define("debug", [&game](const Yt::ScriptCall&) { game.toggle_debug_text(); });
-	viewport.on_render([&gui, &game](Yt::RenderPass& pass, const Yt::Vector2& cursor, const Yt::RenderReport& report) {
-		gui.draw(pass, cursor);
+	Yt::ScriptContext script;
+	Yt::IonGui ion_gui{ "data/gui.ion", resource_loader, script };
+	Game game{ resource_loader, ion_gui };
+	viewport.on_render([&ion_gui, &game](Yt::RenderPass& pass, const Yt::Vector2& cursor, const Yt::RenderReport& report) {
+		ion_gui.draw(pass, cursor);
 		game.draw_debug_graphics(pass, cursor, report);
 	});
 
-	gui.start();
-	window.set_title(gui.title());
+	ion_gui.start();
+	window.set_title("Playground3D");
 	window.show();
 	for (Yt::RenderStatistics statistics; application.process_events(); statistics.add_frame())
 	{
+		Yt::GuiFrame gui{ gui_state };
+		if (gui.keyPressed(Yt::Key::F1))
+			game.toggle_debug_text();
+		if (gui.keyPressed(Yt::Key::F10))
+			viewport.take_screenshot();
+		if (gui.keyPressed(Yt::Key::Escape))
+			window.close();
 		game.update(window, statistics.last_frame_duration());
 		viewport.render(statistics.current_report(), statistics.previous_report());
 	}

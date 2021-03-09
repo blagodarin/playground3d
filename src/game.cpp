@@ -8,6 +8,7 @@
 #include <yttrium/application/window.h>
 #include <yttrium/exceptions.h>
 #include <yttrium/gui/gui.h>
+#include <yttrium/gui/ion_gui.h>
 #include <yttrium/ion/reader.h>
 #include <yttrium/ion/writer.h>
 #include <yttrium/logger.h>
@@ -144,7 +145,7 @@ public:
 	}
 };
 
-class WorldCanvas final : public Yt::Canvas
+class WorldCanvas final : public Yt::IonGuiCanvas
 {
 public:
 	explicit WorldCanvas(GameState& state, Yt::ResourceLoader& resource_loader)
@@ -180,7 +181,7 @@ private:
 	std::optional<Yt::Vector2> _cursor;
 };
 
-class MinimapCanvas final : public Yt::Canvas
+class MinimapCanvas final : public Yt::IonGuiCanvas
 {
 public:
 	explicit MinimapCanvas(GameState& state)
@@ -235,7 +236,7 @@ private:
 	std::optional<Yt::Vector2> _cursor;
 };
 
-Game::Game(Yt::ResourceLoader& resource_loader, Yt::Gui& gui)
+Game::Game(Yt::ResourceLoader& resource_loader, Yt::IonGui& gui)
 	: _state{ std::make_unique<GameState>() }
 	, _world{ std::make_unique<WorldCanvas>(*_state, resource_loader) }
 	, _minimap{ std::make_unique<MinimapCanvas>(*_state) }
