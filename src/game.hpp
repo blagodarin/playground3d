@@ -9,7 +9,6 @@
 
 namespace Yt
 {
-	class IonGui;
 	class RenderPass;
 	struct RenderReport;
 	class ResourceLoader;
@@ -24,11 +23,14 @@ class WorldCanvas;
 class Game
 {
 public:
-	Game(Yt::ResourceLoader&, Yt::IonGui&);
+	Game(Yt::ResourceLoader&);
 	~Game() noexcept;
 
-	void draw_debug_graphics(Yt::RenderPass&, const Yt::Vector2& cursor, const Yt::RenderReport&);
-	void toggle_debug_text() noexcept;
+	void drawDebugText(Yt::RenderPass&, const Yt::RenderReport&);
+	void drawMinimap(Yt::RenderPass&);
+	void drawWorld(Yt::RenderPass&);
+	void setWorldCursor(const Yt::Vector2&);
+	void toggleDebugText() noexcept;
 	void update(const Yt::Window&, std::chrono::milliseconds);
 
 private:

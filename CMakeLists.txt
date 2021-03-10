@@ -12,7 +12,7 @@ set(YTTRIUM_WITH_JPEG ON) # For screenshots.
 set(YTTRIUM_WITH_OGGVORBIS OFF)
 
 include(FetchContent)
-FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG 0013b168b3cce6af3e00f0fe71d6bcd92dca140c)
+FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG 06b157eea1cb73cff1255d340a24498e71e45e91)
 FetchContent_MakeAvailable(Yttrium)
 
 add_executable(playground3d WIN32
@@ -22,7 +22,7 @@ add_executable(playground3d WIN32
 	src/model.cpp
 	src/model.hpp
 	)
-target_link_libraries(playground3d PRIVATE yapplication yengine ygui ygui_ion ymain)
+target_link_libraries(playground3d PRIVATE yapplication yengine ygui ymain)
 set_target_properties(playground3d PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 yttrium_target_package(playground3d

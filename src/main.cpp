@@ -6,12 +6,15 @@
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
 #include <yttrium/gui/gui.h>
-#include <yttrium/gui/ion_gui.h>
 #include <yttrium/image/image.h>
 #include <yttrium/image/utils.h>
 #include <yttrium/logger.h>
 #include <yttrium/main.h>
 #include <yttrium/math/color.h>
+#include <yttrium/math/rect.h>
+#include <yttrium/math/vector.h>
+#include <yttrium/renderer/modifiers.h>
+#include <yttrium/renderer/pass.h>
 #include <yttrium/renderer/report.h>
 #include <yttrium/renderer/viewport.h>
 #include <yttrium/resource_loader.h>
@@ -21,56 +24,43 @@
 #include <yttrium/storage/writer.h>
 #include "game.hpp"
 
-namespace
-{
-	void make_checkerboard_texture(Yt::Storage& storage, std::string_view name)
-	{
-		storage.attach_buffer(name, Yt::make_bgra32_tga(128, 128, [](size_t x, size_t y) {
-			return ((x ^ y) & 1) ? Yt::Bgra32{ 0xdd, 0xdd, 0xdd } : Yt::Bgra32{ 0x00, 0x00, 0x00 };
-		}));
-	}
-}
-
 int ymain(int, char**)
 {
 	Yt::Logger logger;
-
 	Yt::Storage storage{ Yt::Storage::UseFileSystem::Never };
 	storage.attach_package("playground3d.ypq");
-	::make_checkerboard_texture(storage, "data/checkerboard.tga");
-
+	storage.attach_buffer("data/checkerboard.tga", Yt::make_bgra32_tga(128, 128, [](size_t x, size_t y) {
+		return ((x ^ y) & 1) ? Yt::Bgra32{ 0xdd, 0xdd, 0xdd } : Yt::Bgra32{ 0x00, 0x00, 0x00 };
+	}));
 	Yt::Application application;
-	Yt::Window window{ application };
+	Yt::Window window{ application, "Playground3D" };
+	Yt::GuiState guiState{ window };
+	window.on_key_event([&guiState](const Yt::KeyEvent& event) { guiState.processKeyEvent(event); });
 	Yt::Viewport viewport{ window };
-	viewport.on_screenshot([](Yt::Image&& image) { image.save_as_screenshot(Yt::ImageFormat::Jpeg, 90); });
-
-	Yt::ResourceLoader resource_loader{ storage, &viewport.render_manager() };
-
-	Yt::GuiState gui_state;
-	window.on_key_event([&gui_state](const Yt::KeyEvent& event) { gui_state.processKeyEvent(event); });
-
-	Yt::ScriptContext script;
-	Yt::IonGui ion_gui{ "data/gui.ion", resource_loader, script };
-	Game game{ resource_loader, ion_gui };
-	viewport.on_render([&ion_gui, &game](Yt::RenderPass& pass, const Yt::Vector2& cursor, const Yt::RenderReport& report) {
-		ion_gui.draw(pass, cursor);
-		game.draw_debug_graphics(pass, cursor, report);
-	});
-
-	ion_gui.start();
-	window.set_title("Playground3D");
+	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
+	Game game{ resourceLoader };
 	window.show();
 	for (Yt::RenderStatistics statistics; application.process_events(); statistics.add_frame())
 	{
-		Yt::GuiFrame gui{ gui_state };
+		Yt::GuiFrame gui{ guiState };
 		if (gui.keyPressed(Yt::Key::F1))
-			game.toggle_debug_text();
-		if (gui.keyPressed(Yt::Key::F10))
-			viewport.take_screenshot();
+			game.toggleDebugText();
 		if (gui.keyPressed(Yt::Key::Escape))
 			window.close();
 		game.update(window, statistics.last_frame_duration());
-		viewport.render(statistics.current_report(), statistics.previous_report());
+		viewport.render(statistics.current_report(), [&](Yt::RenderPass& pass) {
+			if (const auto cursor = gui.mouseArea(Yt::Rect{ window.size() }))
+				game.setWorldCursor(Yt::Vector2{ *cursor });
+			game.drawWorld(pass);
+			game.drawMinimap(pass);
+			{
+				Yt::PushTexture push_texture{ pass, nullptr };
+				pass.draw_rect(Yt::RectF{ Yt::Vector2{ window.cursor() }, Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
+			}
+			game.drawDebugText(pass, statistics.previous_report());
+		});
+		if (gui.keyPressed(Yt::Key::F10))
+			viewport.take_screenshot().save_as_screenshot(Yt::ImageFormat::Jpeg, 90);
 	}
 	return 0;
 }

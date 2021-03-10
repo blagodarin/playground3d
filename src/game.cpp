@@ -7,8 +7,6 @@
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
 #include <yttrium/exceptions.h>
-#include <yttrium/gui/gui.h>
-#include <yttrium/gui/ion_gui.h>
 #include <yttrium/ion/reader.h>
 #include <yttrium/ion/writer.h>
 #include <yttrium/logger.h>
@@ -145,17 +143,17 @@ public:
 	}
 };
 
-class WorldCanvas final : public Yt::IonGuiCanvas
+class WorldCanvas
 {
 public:
-	explicit WorldCanvas(GameState& state, Yt::ResourceLoader& resource_loader)
+	WorldCanvas(GameState& state, Yt::ResourceLoader& resource_loader)
 		: _state{ state }
 		, _cube{ resource_loader, "data/cube.obj", "data/cube.material" }
 		, _checkerboard{ resource_loader, "data/checkerboard.obj", "data/checkerboard.material" }
 	{
 	}
 
-	void on_draw(Yt::RenderPass& pass, const Yt::RectF&, std::chrono::milliseconds) override // TODO: Use the provided rect.
+	void draw(Yt::RenderPass& pass)
 	{
 		Yt::Push3D projection{ pass, Yt::Matrix4::perspective(pass.window_size(), 35, .5, 256), _state.camera_matrix() };
 		_state.update_visible_area(pass);
@@ -169,7 +167,7 @@ public:
 		_checkerboard.draw(pass);
 	}
 
-	void on_mouse_move(const Yt::RectF&, const Yt::Vector2& cursor) override
+	void setCursor(const Yt::Vector2& cursor)
 	{
 		_cursor = cursor;
 	}
@@ -181,13 +179,13 @@ private:
 	std::optional<Yt::Vector2> _cursor;
 };
 
-class MinimapCanvas final : public Yt::IonGuiCanvas
+class MinimapCanvas
 {
 public:
 	explicit MinimapCanvas(GameState& state)
 		: _state{ state } {}
 
-	void on_draw(Yt::RenderPass& pass, const Yt::RectF& rect, std::chrono::milliseconds) override
+	void draw(Yt::RenderPass& pass, const Yt::RectF& rect)
 	{
 		Yt::PushTexture push_texture{ pass, nullptr };
 		pass.draw_rect(rect, { 0.25, 0.25, 0.25, 0.75 });
@@ -198,13 +196,13 @@ public:
 		pass.draw_rect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, { 1, 0, 0 });
 	}
 
-	void on_mouse_move(const Yt::RectF& rect, const Yt::Vector2& cursor) override
+	void on_mouse_move(const Yt::RectF& rect, const Yt::Vector2& cursor)
 	{
 		_state.set_position(to_map(rect, cursor) - Yt::Vector2{ 0, 10 });
 		_cursor = cursor;
 	}
 
-	bool on_mouse_press(const Yt::RectF& rect, Yt::Key key, const Yt::Vector2& cursor) override
+	bool on_mouse_press(const Yt::RectF& rect, Yt::Key key, const Yt::Vector2& cursor)
 	{
 		if (key != Yt::Key::Mouse1)
 			return false;
@@ -236,13 +234,11 @@ private:
 	std::optional<Yt::Vector2> _cursor;
 };
 
-Game::Game(Yt::ResourceLoader& resource_loader, Yt::IonGui& gui)
+Game::Game(Yt::ResourceLoader& resourceLoader)
 	: _state{ std::make_unique<GameState>() }
-	, _world{ std::make_unique<WorldCanvas>(*_state, resource_loader) }
+	, _world{ std::make_unique<WorldCanvas>(*_state, resourceLoader) }
 	, _minimap{ std::make_unique<MinimapCanvas>(*_state) }
 {
-	gui.bind_canvas("world", *_world);
-	gui.bind_canvas("minimap", *_minimap);
 	if (const auto source = Yt::Source::from(Yt::user_data_path("Playground3D") / "save.ion"))
 		_state->load(*source);
 }
@@ -252,16 +248,30 @@ Game::~Game() noexcept
 	_state->save(Yt::Writer{ Yt::user_data_path("Playground3D") / "save.ion" });
 }
 
-void Game::draw_debug_graphics(Yt::RenderPass& pass, const Yt::Vector2& cursor, const Yt::RenderReport& report)
+void Game::drawMinimap(Yt::RenderPass& pass)
 {
-	{
-		Yt::PushTexture push_texture{ pass, nullptr };
-		pass.draw_rect(Yt::RectF{ cursor, Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
-	}
+	const Yt::RectF windowRect{ pass.window_size() };
+	const auto unit = windowRect.height() / 100;
+	const auto minimapSize = 20 * unit;
+	_minimap->draw(pass, { { windowRect.right() - minimapSize - unit, windowRect.bottom() - minimapSize - unit }, Yt::SizeF{ minimapSize, minimapSize } });
+}
+
+void Game::drawWorld(Yt::RenderPass& pass)
+{
+	_world->draw(pass);
+}
+
+void Game::drawDebugText(Yt::RenderPass& pass, const Yt::RenderReport& report)
+{
 	_state->update_debug_text(pass, report);
 }
 
-void Game::toggle_debug_text() noexcept
+void Game::setWorldCursor(const Yt::Vector2& cursor)
+{
+	_world->setCursor(cursor);
+}
+
+void Game::toggleDebugText() noexcept
 {
 	_state->_debug_text_visible = !_state->_debug_text_visible;
 }

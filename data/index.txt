@@ -8,5 +8,4 @@ package
 	"data/cube.obj"
 	"data/cube_fs.glsl"
 	"data/cube_vs.glsl"
-	"data/gui.ion"
 ]
