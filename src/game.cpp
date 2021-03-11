@@ -6,22 +6,17 @@
 
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
-#include <yttrium/exceptions.h>
-#include <yttrium/ion/reader.h>
-#include <yttrium/ion/writer.h>
-#include <yttrium/logger.h>
+#include <yttrium/gui/gui.h>
 #include <yttrium/math/line.h>
 #include <yttrium/math/matrix.h>
 #include <yttrium/math/quad.h>
 #include <yttrium/math/rect.h>
-#include <yttrium/renderer/report.h>
 #include <yttrium/renderer/modifiers.h>
 #include <yttrium/renderer/pass.h>
-#include <yttrium/storage/paths.h>
-#include <yttrium/storage/source.h>
-#include <yttrium/storage/writer.h>
 #include <yttrium/utils/string.h>
+
 #include "model.hpp"
+#include "settings.hpp"
 
 #include <optional>
 
@@ -43,7 +38,6 @@ namespace
 class GameState
 {
 public:
-	bool _debug_text_visible = false;
 	Yt::Vector3 _position{ 0, -8.5, 16 };
 	std::optional<Yt::Quad> _visible_area;
 	std::optional<Yt::Vector2> _board_point;
@@ -51,43 +45,6 @@ public:
 	Yt::Matrix4 camera_matrix() const noexcept
 	{
 		return Yt::Matrix4::camera(_position, _rotation);
-	}
-
-	void load(Yt::Source& source)
-	{
-		auto debug = false;
-		auto x = _position.x;
-		auto y = _position.y;
-		try
-		{
-			Yt::IonReader ion{ source };
-			for (auto token = ion.read(); token.type() != Yt::IonToken::Type::End; token = ion.read())
-				if (const auto name = token.to_name(); name == "X")
-					Yt::from_chars(ion.read().to_value(), x);
-				else if (name == "Y")
-					Yt::from_chars(ion.read().to_value(), y);
-				else if (name == "Debug")
-					debug = true;
-		}
-		catch (const Yt::IonError& e)
-		{
-			Yt::Logger::log("Bad settings: ", e.what());
-			return;
-		}
-		_debug_text_visible = debug;
-		set_position({ x, y });
-	}
-
-	void save(Yt::Writer&& writer) const
-	{
-		Yt::IonWriter ion{ writer, Yt::IonWriter::Formatting::Pretty };
-		if (_debug_text_visible)
-			ion.add_name("Debug");
-		ion.add_name("X");
-		ion.add_value(Yt::make_string(_position.x));
-		ion.add_name("Y");
-		ion.add_value(Yt::make_string(_position.y));
-		ion.flush();
 	}
 
 	void set_position(const Yt::Vector2& position)
@@ -102,28 +59,6 @@ public:
 			_board_point.emplace(std::floor(p.x), std::floor(p.y));
 		else
 			_board_point.reset();
-	}
-
-	void update_debug_text(Yt::RenderPass& pass, const Yt::RenderReport& report) const
-	{
-		if (!_debug_text_visible)
-			return;
-		std::string debug_text;
-		Yt::append_to(debug_text,
-			"FPS: ", report._fps, '\n',
-			"MaxFrameTime: ", report._max_frame_time.count(), " ms\n",
-			"Triangles: ", report._triangles, '\n',
-			"DrawCalls: ", report._draw_calls, '\n',
-			"TextureSwitches: ", report._texture_switches, " (Redundant: ", report._extra_texture_switches, ")\n",
-			"ShaderSwitches: ", report._shader_switches, " (Redundant: ", report._extra_shader_switches, ")\n",
-			"X: ", _position.x, ", Y: ", _position.y, ", Z: ", _position.z, '\n',
-			"Cell: (");
-		if (_board_point)
-			Yt::append_to(debug_text, static_cast<int>(_board_point->x), ",", static_cast<int>(_board_point->y));
-		else
-			Yt::append_to(debug_text, "none");
-		Yt::append_to(debug_text, ")");
-		pass.add_debug_text(debug_text);
 	}
 
 	void update_visible_area(Yt::RenderPass& pass)
@@ -167,7 +102,7 @@ public:
 		_checkerboard.draw(pass);
 	}
 
-	void setCursor(const Yt::Vector2& cursor)
+	void setCursor(const std::optional<Yt::Vector2>& cursor)
 	{
 		_cursor = cursor;
 	}
@@ -234,46 +169,47 @@ private:
 	std::optional<Yt::Vector2> _cursor;
 };
 
-Game::Game(Yt::ResourceLoader& resourceLoader)
-	: _state{ std::make_unique<GameState>() }
+Game::Game(Yt::ResourceLoader& resourceLoader, Settings& settings)
+	: _settings{ settings }
+	, _state{ std::make_unique<GameState>() }
 	, _world{ std::make_unique<WorldCanvas>(*_state, resourceLoader) }
 	, _minimap{ std::make_unique<MinimapCanvas>(*_state) }
 {
-	if (const auto source = Yt::Source::from(Yt::user_data_path("Playground3D") / "save.ion"))
-		_state->load(*source);
+	if (const auto values = _settings.get("Camera"); values.size() == 2)
+	{
+		auto x = _state->_position.x;
+		auto y = _state->_position.y;
+		if (Yt::from_chars(values[0], x) && Yt::from_chars(values[1], y))
+			_state->set_position({ x, y });
+	}
 }
 
 Game::~Game() noexcept
 {
-	_state->save(Yt::Writer{ Yt::user_data_path("Playground3D") / "save.ion" });
+	_settings.set("Camera", { Yt::make_string(_state->_position.x), Yt::make_string(_state->_position.y) });
 }
 
-void Game::drawMinimap(Yt::RenderPass& pass)
+Yt::Vector3 Game::cameraPosition() const noexcept
 {
-	const Yt::RectF windowRect{ pass.window_size() };
-	const auto unit = windowRect.height() / 100;
-	const auto minimapSize = 20 * unit;
-	_minimap->draw(pass, { { windowRect.right() - minimapSize - unit, windowRect.bottom() - minimapSize - unit }, Yt::SizeF{ minimapSize, minimapSize } });
+	return _state->_position;
 }
 
-void Game::drawWorld(Yt::RenderPass& pass)
+std::optional<Yt::Vector2> Game::cursorCell() const noexcept
 {
+	return _state->_board_point;
+}
+
+void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
+{
+	const Yt::RectF viewportRect{ pass.window_size() };
+	const auto logicalUnit = viewportRect.height() / 100;
+	const auto minimapSize = 20 * logicalUnit;
+	const Yt::RectF minimapRect{ { viewportRect.right() - minimapSize - logicalUnit, viewportRect.bottom() - minimapSize - logicalUnit }, Yt::SizeF{ minimapSize, minimapSize } };
+	if (const auto cursor = gui.captureCursor(minimapRect))
+		_minimap->on_mouse_move(minimapRect, *cursor);
+	_world->setCursor(gui.captureCursor(viewportRect));
 	_world->draw(pass);
-}
-
-void Game::drawDebugText(Yt::RenderPass& pass, const Yt::RenderReport& report)
-{
-	_state->update_debug_text(pass, report);
-}
-
-void Game::setWorldCursor(const Yt::Vector2& cursor)
-{
-	_world->setCursor(cursor);
-}
-
-void Game::toggleDebugText() noexcept
-{
-	_state->_debug_text_visible = !_state->_debug_text_visible;
+	_minimap->draw(pass, minimapRect);
 }
 
 void Game::update(const Yt::Window& window, std::chrono::milliseconds advance)

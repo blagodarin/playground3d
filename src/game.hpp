@@ -6,35 +6,34 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 
 namespace Yt
 {
+	class GuiFrame;
 	class RenderPass;
-	struct RenderReport;
 	class ResourceLoader;
 	class Window;
 	class Vector2;
+	class Vector3;
 }
 
-class GameState;
-class MinimapCanvas;
-class WorldCanvas;
+class Settings;
 
 class Game
 {
 public:
-	Game(Yt::ResourceLoader&);
+	Game(Yt::ResourceLoader&, Settings&);
 	~Game() noexcept;
 
-	void drawDebugText(Yt::RenderPass&, const Yt::RenderReport&);
-	void drawMinimap(Yt::RenderPass&);
-	void drawWorld(Yt::RenderPass&);
-	void setWorldCursor(const Yt::Vector2&);
-	void toggleDebugText() noexcept;
+	Yt::Vector3 cameraPosition() const noexcept;
+	std::optional<Yt::Vector2> cursorCell() const noexcept;
+	void mainScreen(Yt::GuiFrame&, Yt::RenderPass&);
 	void update(const Yt::Window&, std::chrono::milliseconds);
 
 private:
-	const std::unique_ptr<GameState> _state;
-	const std::unique_ptr<WorldCanvas> _world;
-	const std::unique_ptr<MinimapCanvas> _minimap;
+	Settings& _settings;
+	const std::unique_ptr<class GameState> _state;
+	const std::unique_ptr<class WorldCanvas> _world;
+	const std::unique_ptr<class MinimapCanvas> _minimap;
 };

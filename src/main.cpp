@@ -18,11 +18,62 @@
 #include <yttrium/renderer/report.h>
 #include <yttrium/renderer/viewport.h>
 #include <yttrium/resource_loader.h>
-#include <yttrium/script/context.h>
 #include <yttrium/storage/paths.h>
 #include <yttrium/storage/storage.h>
-#include <yttrium/storage/writer.h>
+
 #include "game.hpp"
+#include "settings.hpp"
+
+namespace
+{
+	class DebugGraphics
+	{
+	public:
+		DebugGraphics(Settings& settings)
+			: _settings{ settings }
+		{
+			if (const auto values = _settings.get("Debug"); !values.empty() && values[0] == "1")
+				_showText = true;
+		}
+
+		~DebugGraphics()
+		{
+			_settings.set("Debug", { _showText ? "1" : "0" });
+		}
+
+		void present(Yt::GuiFrame& gui, Yt::RenderPass& pass, const Yt::RenderReport& report, const Game& game)
+		{
+			if (gui.captureKeyDown(Yt::Key::F1))
+				_showText = !_showText;
+			{
+				Yt::PushTexture push_texture{ pass, nullptr };
+				pass.draw_rect(Yt::RectF{ gui.cursor(), Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
+			}
+			if (_showText)
+			{
+				const auto camera = game.cameraPosition();
+				std::string debug_text;
+				Yt::append_to(debug_text,
+					"FPS: ", report._fps, '\n',
+					"MaxFrameTime: ", report._max_frame_time.count(), " ms\n",
+					"Triangles: ", report._triangles, '\n',
+					"DrawCalls: ", report._draw_calls, '\n',
+					"TextureSwitches: ", report._texture_switches, " (Redundant: ", report._extra_texture_switches, ")\n",
+					"ShaderSwitches: ", report._shader_switches, " (Redundant: ", report._extra_shader_switches, ")\n",
+					"Camera: X=", camera.x, ", Y=", camera.y, ", Z=", camera.z, '\n');
+				if (const auto cell = game.cursorCell())
+					Yt::append_to(debug_text, "Cell: (", static_cast<int>(cell->x), ",", static_cast<int>(cell->y), ")");
+				else
+					Yt::append_to(debug_text, "Cell: none");
+				pass.add_debug_text(debug_text);
+			}
+		}
+
+	private:
+		Settings& _settings;
+		bool _showText = false;
+	};
+}
 
 int ymain(int, char**)
 {
@@ -38,29 +89,22 @@ int ymain(int, char**)
 	window.on_key_event([&guiState](const Yt::KeyEvent& event) { guiState.processKeyEvent(event); });
 	Yt::Viewport viewport{ window };
 	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
-	Game game{ resourceLoader };
+	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
+	Game game{ resourceLoader, settings };
+	DebugGraphics debugGraphics{ settings };
 	window.show();
 	for (Yt::RenderStatistics statistics; application.process_events(); statistics.add_frame())
 	{
 		Yt::GuiFrame gui{ guiState };
-		if (gui.keyPressed(Yt::Key::F1))
-			game.toggleDebugText();
-		if (gui.keyPressed(Yt::Key::Escape))
-			window.close();
 		game.update(window, statistics.last_frame_duration());
 		viewport.render(statistics.current_report(), [&](Yt::RenderPass& pass) {
-			if (const auto cursor = gui.mouseArea(Yt::Rect{ window.size() }))
-				game.setWorldCursor(Yt::Vector2{ *cursor });
-			game.drawWorld(pass);
-			game.drawMinimap(pass);
-			{
-				Yt::PushTexture push_texture{ pass, nullptr };
-				pass.draw_rect(Yt::RectF{ Yt::Vector2{ window.cursor() }, Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
-			}
-			game.drawDebugText(pass, statistics.previous_report());
+			game.mainScreen(gui, pass);
+			debugGraphics.present(gui, pass, statistics.previous_report(), game);
 		});
-		if (gui.keyPressed(Yt::Key::F10))
+		if (gui.captureKeyDown(Yt::Key::F10))
 			viewport.take_screenshot().save_as_screenshot(Yt::ImageFormat::Jpeg, 90);
+		if (gui.captureKeyDown(Yt::Key::Escape))
+			window.close();
 	}
 	return 0;
 }
