@@ -35,5 +35,6 @@ private:
 	Settings& _settings;
 	const std::unique_ptr<class GameState> _state;
 	const std::unique_ptr<class WorldCanvas> _world;
-	const std::unique_ptr<class MinimapCanvas> _minimap;
+	const std::unique_ptr<class MinimapCanvas> _leftMinimap;
+	const std::unique_ptr<class MinimapCanvas> _rightMinimap;
 };

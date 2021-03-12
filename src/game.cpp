@@ -94,6 +94,8 @@ public:
 		_state.update_visible_area(pass);
 		if (_cursor)
 			_state.update_board_point(pass, *_cursor);
+		else
+			_state._board_point.reset();
 		if (_state._board_point)
 		{
 			Yt::PushTransformation t{ pass, Yt::Matrix4::translation({ _state._board_point->x + .5f, _state._board_point->y + .5f, .5f }) };
@@ -131,18 +133,11 @@ public:
 		pass.draw_rect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, { 1, 0, 0 });
 	}
 
-	void on_mouse_move(const Yt::RectF& rect, const Yt::Vector2& cursor)
+	void setCursor(std::optional<Yt::Vector2>&& cursor, const Yt::RectF& rect)
 	{
-		_state.set_position(to_map(rect, cursor) - Yt::Vector2{ 0, 10 });
 		_cursor = cursor;
-	}
-
-	bool on_mouse_press(const Yt::RectF& rect, Yt::Key key, const Yt::Vector2& cursor)
-	{
-		if (key != Yt::Key::Mouse1)
-			return false;
-		on_mouse_move(rect, cursor);
-		return true;
+		if (_cursor)
+			_state.set_position(to_map(rect, *_cursor) - Yt::Vector2{ 0, 10 });
 	}
 
 private:
@@ -173,7 +168,8 @@ Game::Game(Yt::ResourceLoader& resourceLoader, Settings& settings)
 	: _settings{ settings }
 	, _state{ std::make_unique<GameState>() }
 	, _world{ std::make_unique<WorldCanvas>(*_state, resourceLoader) }
-	, _minimap{ std::make_unique<MinimapCanvas>(*_state) }
+	, _leftMinimap{ std::make_unique<MinimapCanvas>(*_state) }
+	, _rightMinimap{ std::make_unique<MinimapCanvas>(*_state) }
 {
 	if (const auto values = _settings.get("Camera"); values.size() == 2)
 	{
@@ -204,12 +200,14 @@ void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 	const Yt::RectF viewportRect{ pass.window_size() };
 	const auto logicalUnit = viewportRect.height() / 100;
 	const auto minimapSize = 20 * logicalUnit;
-	const Yt::RectF minimapRect{ { viewportRect.right() - minimapSize - logicalUnit, viewportRect.bottom() - minimapSize - logicalUnit }, Yt::SizeF{ minimapSize, minimapSize } };
-	if (const auto cursor = gui.captureCursor(minimapRect))
-		_minimap->on_mouse_move(minimapRect, *cursor);
-	_world->setCursor(gui.captureCursor(viewportRect));
+	const Yt::RectF leftMinimapRect{ { logicalUnit, viewportRect.bottom() - minimapSize - logicalUnit }, Yt::SizeF{ minimapSize, minimapSize } };
+	const Yt::RectF rightMinimapRect{ { viewportRect.right() - minimapSize - logicalUnit, viewportRect.bottom() - minimapSize - logicalUnit }, Yt::SizeF{ minimapSize, minimapSize } };
+	_leftMinimap->setCursor(gui.dragArea("LeftMinimap", leftMinimapRect, Yt::Key::Mouse1), leftMinimapRect);
+	_rightMinimap->setCursor(gui.dragArea("RightMinimap", rightMinimapRect, Yt::Key::Mouse1), rightMinimapRect);
+	_world->setCursor(gui.hoverArea(viewportRect));
 	_world->draw(pass);
-	_minimap->draw(pass, minimapRect);
+	_leftMinimap->draw(pass, leftMinimapRect);
+	_rightMinimap->draw(pass, rightMinimapRect);
 }
 
 void Game::update(const Yt::Window& window, std::chrono::milliseconds advance)

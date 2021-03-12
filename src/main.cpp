@@ -41,13 +41,13 @@ namespace
 			_settings.set("Debug", { _showText ? "1" : "0" });
 		}
 
-		void present(Yt::GuiFrame& gui, Yt::RenderPass& pass, const Yt::RenderReport& report, const Game& game)
+		void present(Yt::GuiFrame& gui, Yt::RenderPass& pass, const Yt::RenderReport& report, const Game& game, const Yt::Point& cursor)
 		{
 			if (gui.captureKeyDown(Yt::Key::F1))
 				_showText = !_showText;
 			{
 				Yt::PushTexture push_texture{ pass, nullptr };
-				pass.draw_rect(Yt::RectF{ gui.cursor(), Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
+				pass.draw_rect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
 			}
 			if (_showText)
 			{
@@ -99,7 +99,7 @@ int ymain(int, char**)
 		game.update(window, statistics.last_frame_duration());
 		viewport.render(statistics.current_report(), [&](Yt::RenderPass& pass) {
 			game.mainScreen(gui, pass);
-			debugGraphics.present(gui, pass, statistics.previous_report(), game);
+			debugGraphics.present(gui, pass, statistics.previous_report(), game, window.cursor());
 		});
 		if (gui.captureKeyDown(Yt::Key::F10))
 			viewport.take_screenshot().save_as_screenshot(Yt::ImageFormat::Jpeg, 90);
