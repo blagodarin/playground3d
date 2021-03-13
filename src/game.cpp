@@ -11,6 +11,7 @@
 #include <yttrium/math/matrix.h>
 #include <yttrium/math/quad.h>
 #include <yttrium/math/rect.h>
+#include <yttrium/renderer/2d.h>
 #include <yttrium/renderer/modifiers.h>
 #include <yttrium/renderer/pass.h>
 #include <yttrium/utils/string.h>
@@ -122,15 +123,15 @@ public:
 	explicit MinimapCanvas(GameState& state)
 		: _state{ state } {}
 
-	void draw(Yt::RenderPass& pass, const Yt::RectF& rect)
+	void draw(Yt::Renderer2D& renderer, const Yt::RectF& rect)
 	{
-		Yt::PushTexture push_texture{ pass, nullptr };
-		pass.draw_rect(rect, { 0.25, 0.25, 0.25, 0.75 });
+		renderer.setTexture({});
+		renderer.addRect(rect, Yt::Bgra32::grayscale(64, 192));
 		if (_state._visible_area)
-			pass.draw_quad(to_window(rect, *_state._visible_area), { 1, 1, 0, 0.25 });
+			renderer.addQuad(to_window(rect, *_state._visible_area), Yt::Bgra32::yellow(64));
 		if (_cursor)
-			pass.draw_rect({ *_cursor, Yt::SizeF{ 1, 1 } }, { 0, 1, 0 });
-		pass.draw_rect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, { 1, 0, 0 });
+			renderer.addRect({ *_cursor, Yt::SizeF{ 1, 1 } }, Yt::Bgra32::green());
+		renderer.addRect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, Yt::Bgra32::red());
 	}
 
 	void setCursor(std::optional<Yt::Vector2>&& cursor, const Yt::RectF& rect)
@@ -195,7 +196,7 @@ std::optional<Yt::Vector2> Game::cursorCell() const noexcept
 	return _state->_board_point;
 }
 
-void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
+void Game::mainScreen(Yt::GuiFrame& gui, Yt::Renderer2D& renderer, Yt::RenderPass& pass)
 {
 	const Yt::RectF viewportRect{ pass.window_size() };
 	const auto logicalUnit = viewportRect.height() / 100;
@@ -206,8 +207,8 @@ void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 	_rightMinimap->setCursor(gui.dragArea("RightMinimap", rightMinimapRect, Yt::Key::Mouse1), rightMinimapRect);
 	_world->setCursor(gui.hoverArea(viewportRect));
 	_world->draw(pass);
-	_leftMinimap->draw(pass, leftMinimapRect);
-	_rightMinimap->draw(pass, rightMinimapRect);
+	_rightMinimap->draw(renderer, rightMinimapRect);
+	_leftMinimap->draw(renderer, leftMinimapRect);
 }
 
 void Game::update(const Yt::Window& window, std::chrono::milliseconds advance)

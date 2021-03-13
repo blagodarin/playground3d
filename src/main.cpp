@@ -13,6 +13,7 @@
 #include <yttrium/math/color.h>
 #include <yttrium/math/rect.h>
 #include <yttrium/math/vector.h>
+#include <yttrium/renderer/2d.h>
 #include <yttrium/renderer/modifiers.h>
 #include <yttrium/renderer/pass.h>
 #include <yttrium/renderer/report.h>
@@ -32,28 +33,26 @@ namespace
 		DebugGraphics(Settings& settings)
 			: _settings{ settings }
 		{
-			if (const auto values = _settings.get("Debug"); !values.empty() && values[0] == "1")
-				_showText = true;
+			if (const auto values = _settings.get("DebugText"); !values.empty() && values[0] == "1")
+				_showDebugText = true;
 		}
 
 		~DebugGraphics()
 		{
-			_settings.set("Debug", { _showText ? "1" : "0" });
+			_settings.set("DebugText", { _showDebugText ? "1" : "0" });
 		}
 
-		void present(Yt::GuiFrame& gui, Yt::RenderPass& pass, const Yt::RenderReport& report, const Game& game, const Yt::Point& cursor)
+		void present(Yt::GuiFrame& gui, Yt::Renderer2D& renderer, const Yt::RenderReport& report, const Game& game, const Yt::Point& cursor)
 		{
 			if (gui.captureKeyDown(Yt::Key::F1))
-				_showText = !_showText;
-			{
-				Yt::PushTexture push_texture{ pass, nullptr };
-				pass.draw_rect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } }, { 1, 1, 0, 1 });
-			}
-			if (_showText)
+				_showDebugText = !_showDebugText;
+			renderer.setTexture({});
+			renderer.addRect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } }, Yt::Bgra32::yellow());
+			if (_showDebugText)
 			{
 				const auto camera = game.cameraPosition();
-				std::string debug_text;
-				Yt::append_to(debug_text,
+				std::string debugText;
+				Yt::append_to(debugText,
 					"FPS: ", report._fps, '\n',
 					"MaxFrameTime: ", report._max_frame_time.count(), " ms\n",
 					"Triangles: ", report._triangles, '\n',
@@ -62,16 +61,16 @@ namespace
 					"ShaderSwitches: ", report._shader_switches, " (Redundant: ", report._extra_shader_switches, ")\n",
 					"Camera: X=", camera.x, ", Y=", camera.y, ", Z=", camera.z, '\n');
 				if (const auto cell = game.cursorCell())
-					Yt::append_to(debug_text, "Cell: (", static_cast<int>(cell->x), ",", static_cast<int>(cell->y), ")");
+					Yt::append_to(debugText, "Cell: (", static_cast<int>(cell->x), ",", static_cast<int>(cell->y), ")");
 				else
-					Yt::append_to(debug_text, "Cell: none");
-				pass.add_debug_text(debug_text);
+					Yt::append_to(debugText, "Cell: none");
+				renderer.addDebugText(debugText);
 			}
 		}
 
 	private:
 		Settings& _settings;
-		bool _showText = false;
+		bool _showDebugText = false;
 	};
 }
 
@@ -88,6 +87,7 @@ int ymain(int, char**)
 	Yt::GuiState guiState{ window };
 	window.on_key_event([&guiState](const Yt::KeyEvent& event) { guiState.processKeyEvent(event); });
 	Yt::Viewport viewport{ window };
+	Yt::Renderer2D rendered2d{ viewport };
 	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
 	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
 	Game game{ resourceLoader, settings };
@@ -98,8 +98,9 @@ int ymain(int, char**)
 		Yt::GuiFrame gui{ guiState };
 		game.update(window, statistics.last_frame_duration());
 		viewport.render(statistics.current_report(), [&](Yt::RenderPass& pass) {
-			game.mainScreen(gui, pass);
-			debugGraphics.present(gui, pass, statistics.previous_report(), game, window.cursor());
+			game.mainScreen(gui, rendered2d, pass);
+			debugGraphics.present(gui, rendered2d, statistics.previous_report(), game, window.cursor());
+			rendered2d.draw(pass);
 		});
 		if (gui.captureKeyDown(Yt::Key::F10))
 			viewport.take_screenshot().save_as_screenshot(Yt::ImageFormat::Jpeg, 90);

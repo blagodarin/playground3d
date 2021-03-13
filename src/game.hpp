@@ -12,6 +12,7 @@ namespace Yt
 {
 	class GuiFrame;
 	class RenderPass;
+	class Renderer2D;
 	class ResourceLoader;
 	class Window;
 	class Vector2;
@@ -28,7 +29,7 @@ public:
 
 	Yt::Vector3 cameraPosition() const noexcept;
 	std::optional<Yt::Vector2> cursorCell() const noexcept;
-	void mainScreen(Yt::GuiFrame&, Yt::RenderPass&);
+	void mainScreen(Yt::GuiFrame&, Yt::Renderer2D&, Yt::RenderPass&);
 	void update(const Yt::Window&, std::chrono::milliseconds);
 
 private:
