@@ -19,8 +19,6 @@
 #include "model.hpp"
 #include "settings.hpp"
 
-#include <optional>
-
 namespace
 {
 	const Yt::Plane _board_plane{ { 0, 0, 1 }, { 0, 0, 0 } };
@@ -42,6 +40,8 @@ public:
 	Yt::Vector3 _position{ 0, -8.5, 16 };
 	std::optional<Yt::Quad> _visible_area;
 	std::optional<Yt::Vector2> _board_point;
+	bool _showLeftMinimap = true;
+	bool _showRightMinimap = true;
 
 	Yt::Matrix4 camera_matrix() const noexcept
 	{
@@ -79,18 +79,19 @@ public:
 	}
 };
 
-class WorldCanvas
+class WorldWidget
 {
 public:
-	WorldCanvas(GameState& state, Yt::ResourceLoader& resource_loader)
+	WorldWidget(GameState& state, Yt::ResourceLoader& resource_loader)
 		: _state{ state }
 		, _cube{ resource_loader, "data/cube.obj", "data/cube.material" }
 		, _checkerboard{ resource_loader, "data/checkerboard.obj", "data/checkerboard.material" }
 	{
 	}
 
-	void draw(Yt::RenderPass& pass)
+	void present(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 	{
+		_cursor = gui.hoverArea(Yt::RectF{ pass.window_size() });
 		Yt::Push3D projection{ pass, Yt::Matrix4::perspective(pass.window_size(), 35, .5, 256), _state.camera_matrix() };
 		_state.update_visible_area(pass);
 		if (_cursor)
@@ -105,11 +106,6 @@ public:
 		_checkerboard.draw(pass);
 	}
 
-	void setCursor(const std::optional<Yt::Vector2>& cursor)
-	{
-		_cursor = cursor;
-	}
-
 private:
 	GameState& _state;
 	Model _cube;
@@ -117,28 +113,24 @@ private:
 	std::optional<Yt::Vector2> _cursor;
 };
 
-class MinimapCanvas
+class MinimapWidget
 {
 public:
-	explicit MinimapCanvas(GameState& state)
-		: _state{ state } {}
+	MinimapWidget(GameState& state, std::string_view id)
+		: _state{ state }, _id{ id } {}
 
-	void draw(Yt::Renderer2D& renderer, const Yt::RectF& rect)
+	void present(Yt::GuiFrame& gui, const Yt::RectF& rect)
 	{
-		renderer.setTexture({});
-		renderer.addRect(rect, Yt::Bgra32::grayscale(64, 192));
-		if (_state._visible_area)
-			renderer.addQuad(to_window(rect, *_state._visible_area), Yt::Bgra32::yellow(64));
-		if (_cursor)
-			renderer.addRect({ *_cursor, Yt::SizeF{ 1, 1 } }, Yt::Bgra32::green());
-		renderer.addRect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, Yt::Bgra32::red());
-	}
-
-	void setCursor(std::optional<Yt::Vector2>&& cursor, const Yt::RectF& rect)
-	{
-		_cursor = cursor;
+		_cursor = gui.dragArea(_id, rect, Yt::Key::Mouse1);
 		if (_cursor)
 			_state.set_position(to_map(rect, *_cursor) - Yt::Vector2{ 0, 10 });
+		gui.renderer().setTexture({});
+		gui.renderer().addRect(rect, Yt::Bgra32::grayscale(64, 192));
+		if (_state._visible_area)
+			gui.renderer().addQuad(to_window(rect, *_state._visible_area), Yt::Bgra32::yellow(64));
+		if (_cursor)
+			gui.renderer().addRect({ *_cursor, Yt::SizeF{ 1, 1 } }, Yt::Bgra32::green());
+		gui.renderer().addRect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, Yt::Bgra32::red());
 	}
 
 private:
@@ -162,15 +154,16 @@ private:
 
 private:
 	GameState& _state;
+	const std::string _id;
 	std::optional<Yt::Vector2> _cursor;
 };
 
 Game::Game(Yt::ResourceLoader& resourceLoader, Settings& settings)
 	: _settings{ settings }
 	, _state{ std::make_unique<GameState>() }
-	, _world{ std::make_unique<WorldCanvas>(*_state, resourceLoader) }
-	, _leftMinimap{ std::make_unique<MinimapCanvas>(*_state) }
-	, _rightMinimap{ std::make_unique<MinimapCanvas>(*_state) }
+	, _world{ std::make_unique<WorldWidget>(*_state, resourceLoader) }
+	, _leftMinimap{ std::make_unique<MinimapWidget>(*_state, "LeftMinimap") }
+	, _rightMinimap{ std::make_unique<MinimapWidget>(*_state, "RightMinimap") }
 {
 	if (const auto values = _settings.get("Camera"); values.size() == 2)
 	{
@@ -196,19 +189,22 @@ std::optional<Yt::Vector2> Game::cursorCell() const noexcept
 	return _state->_board_point;
 }
 
-void Game::mainScreen(Yt::GuiFrame& gui, Yt::Renderer2D& renderer, Yt::RenderPass& pass)
+void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 {
-	const Yt::RectF viewportRect{ pass.window_size() };
-	const auto logicalUnit = viewportRect.height() / 100;
-	const auto minimapSize = 20 * logicalUnit;
-	const Yt::RectF leftMinimapRect{ { logicalUnit, viewportRect.bottom() - minimapSize - logicalUnit }, Yt::SizeF{ minimapSize, minimapSize } };
-	const Yt::RectF rightMinimapRect{ { viewportRect.right() - minimapSize - logicalUnit, viewportRect.bottom() - minimapSize - logicalUnit }, Yt::SizeF{ minimapSize, minimapSize } };
-	_leftMinimap->setCursor(gui.dragArea("LeftMinimap", leftMinimapRect, Yt::Key::Mouse1), leftMinimapRect);
-	_rightMinimap->setCursor(gui.dragArea("RightMinimap", rightMinimapRect, Yt::Key::Mouse1), rightMinimapRect);
-	_world->setCursor(gui.hoverArea(viewportRect));
-	_world->draw(pass);
-	_rightMinimap->draw(renderer, rightMinimapRect);
-	_leftMinimap->draw(renderer, leftMinimapRect);
+	const Yt::RectF screen{ pass.window_size() };
+	const auto unit = screen.height() / 100;
+	const auto minimapSize = Yt::SizeF{ 20, 20 } * unit;
+	const auto buttonSize = Yt::SizeF{ 8, 3 } * unit;
+	const auto buttonTop = screen.bottom() - buttonSize._height - unit;
+	if (gui.button("ShowLeftMinimap", _state->_showLeftMinimap ? "Hide" : "Show", { { minimapSize._width + 2 * unit, buttonTop }, buttonSize }))
+		_state->_showLeftMinimap = !_state->_showLeftMinimap;
+	if (gui.button("ShowRightMinimap", _state->_showRightMinimap ? "Hide" : "Show", { { screen.right() - minimapSize._width - 2 * unit - buttonSize._width, buttonTop }, buttonSize }))
+		_state->_showRightMinimap = !_state->_showRightMinimap;
+	if (_state->_showLeftMinimap)
+		_leftMinimap->present(gui, { { unit, screen.bottom() - minimapSize._width - unit }, minimapSize });
+	if (_state->_showRightMinimap)
+		_rightMinimap->present(gui, { { screen.right() - minimapSize._width - unit, screen.bottom() - minimapSize._height - unit }, minimapSize });
+	_world->present(gui, pass);
 }
 
 void Game::update(const Yt::Window& window, std::chrono::milliseconds advance)

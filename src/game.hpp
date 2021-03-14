@@ -12,7 +12,6 @@ namespace Yt
 {
 	class GuiFrame;
 	class RenderPass;
-	class Renderer2D;
 	class ResourceLoader;
 	class Window;
 	class Vector2;
@@ -29,13 +28,13 @@ public:
 
 	Yt::Vector3 cameraPosition() const noexcept;
 	std::optional<Yt::Vector2> cursorCell() const noexcept;
-	void mainScreen(Yt::GuiFrame&, Yt::Renderer2D&, Yt::RenderPass&);
+	void mainScreen(Yt::GuiFrame&, Yt::RenderPass&);
 	void update(const Yt::Window&, std::chrono::milliseconds);
 
 private:
 	Settings& _settings;
 	const std::unique_ptr<class GameState> _state;
-	const std::unique_ptr<class WorldCanvas> _world;
-	const std::unique_ptr<class MinimapCanvas> _leftMinimap;
-	const std::unique_ptr<class MinimapCanvas> _rightMinimap;
+	const std::unique_ptr<class WorldWidget> _world;
+	const std::unique_ptr<class MinimapWidget> _leftMinimap;
+	const std::unique_ptr<class MinimapWidget> _rightMinimap;
 };
