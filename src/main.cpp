@@ -48,15 +48,17 @@ namespace
 			if (gui.captureKeyDown(Yt::Key::F1))
 				_showDebugText = !_showDebugText;
 			gui.renderer().setTexture({});
-			gui.renderer().addRect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } }, Yt::Bgra32::yellow());
+			gui.renderer().setColor(Yt::Bgra32::yellow());
+			gui.renderer().addRect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } });
 			if (_showDebugText && _font)
 			{
 				auto y = 0.f;
 				const auto print = [&](std::string_view text) {
 					constexpr float fontSize = 24;
-					_font->render(gui.renderer(), Yt::Bgra32::white(), { 0, y }, fontSize, text);
+					_font->render(gui.renderer(), { 0, y }, fontSize, text);
 					y += fontSize;
 				};
+				gui.renderer().setColor(Yt::Bgra32::white());
 				print(Yt::make_string("FPS: ", report._fps));
 				print(Yt::make_string("MaxFrameTime: ", report._max_frame_time.count(), " ms"));
 				print(Yt::make_string("Triangles: ", report._triangles));

@@ -125,12 +125,20 @@ public:
 		if (_cursor)
 			_state.set_position(to_map(rect, *_cursor) - Yt::Vector2{ 0, 10 });
 		gui.renderer().setTexture({});
-		gui.renderer().addRect(rect, Yt::Bgra32::grayscale(64, 192));
+		gui.renderer().setColor(Yt::Bgra32::grayscale(64, 192));
+		gui.renderer().addRect(rect);
 		if (_state._visible_area)
-			gui.renderer().addQuad(to_window(rect, *_state._visible_area), Yt::Bgra32::yellow(64));
+		{
+			gui.renderer().setColor(Yt::Bgra32::yellow(64));
+			gui.renderer().addQuad(to_window(rect, *_state._visible_area));
+		}
 		if (_cursor)
-			gui.renderer().addRect({ *_cursor, Yt::SizeF{ 1, 1 } }, Yt::Bgra32::green());
-		gui.renderer().addRect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } }, Yt::Bgra32::red());
+		{
+			gui.renderer().setColor(Yt::Bgra32::green());
+			gui.renderer().addRect({ *_cursor, Yt::SizeF{ 1, 1 } });
+		}
+		gui.renderer().setColor(Yt::Bgra32::red());
+		gui.renderer().addRect({ to_window(rect, { _state._position.x, _state._position.y }) - Yt::Vector2{ 2, 2 }, Yt::SizeF{ 4, 4 } });
 	}
 
 private:
