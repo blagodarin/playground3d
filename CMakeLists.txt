@@ -12,7 +12,7 @@ set(YTTRIUM_WITH_JPEG ON) # For screenshots.
 set(YTTRIUM_WITH_OGGVORBIS OFF)
 
 include(FetchContent)
-FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG efb30e98609a31c662fceef835b040e68c3043d3)
+FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG 92b92598efb8c4526cc8b0298543c4ac2e646e9f)
 FetchContent_MakeAvailable(Yttrium)
 
 add_executable(playground3d WIN32

@@ -7,6 +7,7 @@
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
 #include <yttrium/gui/gui.h>
+#include <yttrium/gui/layout.h>
 #include <yttrium/math/line.h>
 #include <yttrium/math/matrix.h>
 #include <yttrium/math/quad.h>
@@ -68,7 +69,7 @@ public:
 		Yt::Vector3 top_right;
 		Yt::Vector3 bottom_left;
 		Yt::Vector3 bottom_right;
-		const Yt::RectF r{ Yt::SizeF{ pass.window_size() } };
+		const auto r = pass.viewport_rect();
 		if (pass.pixel_ray(r.top_left()).plane_intersection(_board_plane, top_left)
 			&& pass.pixel_ray(r.top_right()).plane_intersection(_board_plane, top_right)
 			&& pass.pixel_ray(r.bottom_left()).plane_intersection(_board_plane, bottom_left)
@@ -91,8 +92,8 @@ public:
 
 	void present(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 	{
-		_cursor = gui.hoverArea(Yt::RectF{ pass.window_size() });
-		Yt::Push3D projection{ pass, Yt::Matrix4::perspective(pass.window_size(), 35, .5, 256), _state.camera_matrix() };
+		_cursor = gui.hoverArea(pass.viewport_rect());
+		Yt::Push3D projection{ pass, Yt::Matrix4::perspective(pass.viewport_rect().size(), 35, .5, 256), _state.camera_matrix() };
 		_state.update_visible_area(pass);
 		if (_cursor)
 			_state.update_board_point(pass, *_cursor);
@@ -199,19 +200,21 @@ std::optional<Yt::Vector2> Game::cursorCell() const noexcept
 
 void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 {
-	const Yt::RectF screen{ pass.window_size() };
-	const auto unit = screen.height() / 100;
-	const auto minimapSize = Yt::SizeF{ 20, 20 } * unit;
-	const auto buttonSize = Yt::SizeF{ 8, 3 } * unit;
-	const auto buttonTop = screen.bottom() - buttonSize._height - unit;
-	if (gui.button("ShowLeftMinimap", _state->_showLeftMinimap ? "Hide" : "Show", { { minimapSize._width + 2 * unit, buttonTop }, buttonSize }))
+	Yt::GuiLayout layout{ pass.viewport_rect() };
+	layout.scaleForHeight(100);
+	layout.setSpacing(1);
+	layout.fromBottomLeft(Yt::GuiLayout::Axis::X, 1);
+	const auto leftMinimapRect = layout.add({ 20, 20 });
+	if (gui.button("ToggleLeftMinimap", _state->_showLeftMinimap ? "Hide" : "Show", layout.add({ 8, 3 })))
 		_state->_showLeftMinimap = !_state->_showLeftMinimap;
-	if (gui.button("ShowRightMinimap", _state->_showRightMinimap ? "Hide" : "Show", { { screen.right() - minimapSize._width - 2 * unit - buttonSize._width, buttonTop }, buttonSize }))
-		_state->_showRightMinimap = !_state->_showRightMinimap;
 	if (_state->_showLeftMinimap)
-		_leftMinimap->present(gui, { { unit, screen.bottom() - minimapSize._width - unit }, minimapSize });
+		_leftMinimap->present(gui, leftMinimapRect);
+	layout.fromBottomRight(Yt::GuiLayout::Axis::X, 1);
+	const auto rightMinimapRect = layout.add({ 20, 20 });
+	if (gui.button("ToggleRightMinimap", _state->_showRightMinimap ? "Hide" : "Show", layout.add({ 8, 3 })))
+		_state->_showRightMinimap = !_state->_showRightMinimap;
 	if (_state->_showRightMinimap)
-		_rightMinimap->present(gui, { { screen.right() - minimapSize._width - unit, screen.bottom() - minimapSize._height - unit }, minimapSize });
+		_rightMinimap->present(gui, rightMinimapRect);
 	_world->present(gui, pass);
 }
 

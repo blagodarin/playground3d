@@ -7,6 +7,7 @@
 #include <yttrium/application/window.h>
 #include <yttrium/gui/font.h>
 #include <yttrium/gui/gui.h>
+#include <yttrium/gui/layout.h>
 #include <yttrium/image/image.h>
 #include <yttrium/image/utils.h>
 #include <yttrium/logger.h>
@@ -30,9 +31,8 @@ namespace
 	class DebugGraphics
 	{
 	public:
-		DebugGraphics(const std::shared_ptr<const Yt::Font> font, Settings& settings)
-			: _font{ font }
-			, _settings{ settings }
+		DebugGraphics(Settings& settings)
+			: _settings{ settings }
 		{
 			if (const auto values = _settings.get("DebugText"); !values.empty() && values[0] == "1")
 				_showDebugText = true;
@@ -50,32 +50,24 @@ namespace
 			gui.renderer().setTexture({});
 			gui.renderer().setColor(Yt::Bgra32::yellow());
 			gui.renderer().addRect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } });
-			if (_showDebugText && _font)
+			if (_showDebugText)
 			{
-				auto y = 0.f;
-				const auto print = [&](std::string_view text) {
-					constexpr float fontSize = 24;
-					_font->render(gui.renderer(), { 0, y }, fontSize, text);
-					y += fontSize;
-				};
-				gui.renderer().setColor(Yt::Bgra32::white());
-				print(Yt::make_string("FPS: ", report._fps));
-				print(Yt::make_string("MaxFrameTime: ", report._max_frame_time.count(), " ms"));
-				print(Yt::make_string("Triangles: ", report._triangles));
-				print(Yt::make_string("DrawCalls: ", report._draw_calls));
-				print(Yt::make_string("TextureSwitches: ", report._texture_switches, " (Redundant: ", report._extra_texture_switches, ")"));
-				print(Yt::make_string("ShaderSwitches: ", report._shader_switches, " (Redundant: ", report._extra_shader_switches, ")"));
+				gui.layout().fromTopLeft(Yt::GuiLayout::Axis::Y);
+				gui.layout().setSize({ 0, 32 });
+				gui.label(Yt::make_string("fps=", report._fps, ",maxFrameTime=", report._max_frame_time.count(), "ms"));
+				gui.label(Yt::make_string("triangles=", report._triangles, ",drawCalls=", report._draw_calls));
+				gui.label(Yt::make_string("textureSwitches={total=", report._texture_switches, ",redundant=", report._extra_texture_switches, "}"));
+				gui.label(Yt::make_string("shaderSwitches={total=", report._shader_switches, ",redundant=", report._extra_shader_switches, "}"));
 				const auto camera = game.cameraPosition();
-				print(Yt::make_string("Camera: X=", camera.x, ", Y=", camera.y, ", Z=", camera.z));
+				gui.label(Yt::make_string("camera={x=", camera.x, ",y=", camera.y, ",z=", camera.z, "}"));
 				if (const auto cell = game.cursorCell())
-					print(Yt::make_string("Cell: (", static_cast<int>(cell->x), ",", static_cast<int>(cell->y), ")"));
+					gui.label(Yt::make_string("cell={x=", static_cast<int>(cell->x), ",y=", static_cast<int>(cell->y), "}"));
 				else
-					print("Cell: none");
+					gui.label("cell={}");
 			}
 		}
 
 	private:
-		const std::shared_ptr<const Yt::Font> _font;
 		Settings& _settings;
 		bool _showDebugText = false;
 	};
@@ -102,7 +94,7 @@ int ymain(int, char**)
 	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
 	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
 	Game game{ resourceLoader, settings };
-	DebugGraphics debugGraphics{ font, settings };
+	DebugGraphics debugGraphics{ settings };
 	window.show();
 	for (Yt::RenderClock clock; application.process_events(); clock.advance())
 	{
