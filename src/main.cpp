@@ -23,6 +23,8 @@
 #include <yttrium/storage/source.h>
 #include <yttrium/storage/storage.h>
 
+#include <fmt/format.h>
+
 #include "game.hpp"
 #include "settings.hpp"
 
@@ -47,23 +49,23 @@ namespace
 		{
 			if (gui.captureKeyDown(Yt::Key::F1))
 				_showDebugText = !_showDebugText;
-			gui.renderer().setTexture({});
+			gui.selectBlankTexture();
 			gui.renderer().setColor(Yt::Bgra32::yellow());
 			gui.renderer().addRect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } });
 			if (_showDebugText)
 			{
 				gui.layout().fromTopLeft(Yt::GuiLayout::Axis::Y);
 				gui.layout().setSize({ 0, 32 });
-				gui.label(Yt::make_string("fps=", report._fps, ",maxFrameTime=", report._max_frame_time.count(), "ms"));
-				gui.label(Yt::make_string("triangles=", report._triangles, ",drawCalls=", report._draw_calls));
-				gui.label(Yt::make_string("textureSwitches={total=", report._texture_switches, ",redundant=", report._extra_texture_switches, "}"));
-				gui.label(Yt::make_string("shaderSwitches={total=", report._shader_switches, ",redundant=", report._extra_shader_switches, "}"));
+				gui.label(fmt::format("fps={},maxFrameTime={}ms", report._fps, report._max_frame_time.count()));
+				gui.label(fmt::format("triangles={},drawCalls={}", report._triangles, report._draw_calls));
+				gui.label(fmt::format("textureSwitches=(total={},redundant={})", report._texture_switches, report._extra_texture_switches));
+				gui.label(fmt::format("shaderSwitches=(total={},redundant={})", report._shader_switches, report._extra_shader_switches));
 				const auto camera = game.cameraPosition();
-				gui.label(Yt::make_string("camera={x=", camera.x, ",y=", camera.y, ",z=", camera.z, "}"));
+				gui.label(fmt::format("camera=(x={},y={},z={})", camera.x, camera.y, camera.z));
 				if (const auto cell = game.cursorCell())
-					gui.label(Yt::make_string("cell={x=", static_cast<int>(cell->x), ",y=", static_cast<int>(cell->y), "}"));
+					gui.label(fmt::format("cell=(x={},y={})", static_cast<int>(cell->x), static_cast<int>(cell->y)));
 				else
-					gui.label("cell={}");
+					gui.label("cell=()");
 			}
 		}
 

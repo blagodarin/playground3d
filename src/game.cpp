@@ -20,6 +20,8 @@
 #include "model.hpp"
 #include "settings.hpp"
 
+#include <fmt/format.h>
+
 namespace
 {
 	const Yt::Plane _board_plane{ { 0, 0, 1 }, { 0, 0, 0 } };
@@ -43,6 +45,8 @@ public:
 	std::optional<Yt::Vector2> _board_point;
 	bool _showLeftMinimap = true;
 	bool _showRightMinimap = true;
+	bool _showInput = false;
+	std::string _inputText = "Editable?";
 
 	Yt::Matrix4 camera_matrix() const noexcept
 	{
@@ -125,7 +129,7 @@ public:
 		_cursor = gui.dragArea(_id, rect, Yt::Key::Mouse1);
 		if (_cursor)
 			_state.set_position(to_map(rect, *_cursor) - Yt::Vector2{ 0, 10 });
-		gui.renderer().setTexture({});
+		gui.selectBlankTexture();
 		gui.renderer().setColor(Yt::Bgra32::grayscale(64, 192));
 		gui.renderer().addRect(rect);
 		if (_state._visible_area)
@@ -185,7 +189,7 @@ Game::Game(Yt::ResourceLoader& resourceLoader, Settings& settings)
 
 Game::~Game() noexcept
 {
-	_settings.set("Camera", { Yt::make_string(_state->_position.x), Yt::make_string(_state->_position.y) });
+	_settings.set("Camera", { fmt::format("{}", _state->_position.x), fmt::format("{}", _state->_position.y) });
 }
 
 Yt::Vector3 Game::cameraPosition() const noexcept
@@ -215,6 +219,11 @@ void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 		_state->_showRightMinimap = !_state->_showRightMinimap;
 	if (_state->_showRightMinimap)
 		_rightMinimap->present(gui, rightMinimapRect);
+	layout.fromTopRight(Yt::GuiLayout::Axis::Y, 1);
+	if (gui.button("ToggleInput", _state->_showInput ? "Hide input" : "Show input", layout.add({ 20, 3 })))
+		_state->_showInput = !_state->_showInput;
+	if (_state->_showInput)
+		gui.stringEdit("Input", _state->_inputText, layout.add({ 20, 3 }));
 	_world->present(gui, pass);
 }
 
