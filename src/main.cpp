@@ -92,6 +92,7 @@ int ymain(int, char**)
 	Yt::GuiState guiState{ window };
 	guiState.setDefaultFont(font);
 	window.on_key_event([&guiState](const Yt::KeyEvent& event) { guiState.processKeyEvent(event); });
+	window.on_text_input([&guiState](std::string_view text) { guiState.processTextInput(text); });
 	Yt::Renderer2D rendered2d{ viewport };
 	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
 	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
