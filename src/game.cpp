@@ -74,10 +74,10 @@ public:
 		Yt::Vector3 bottom_left;
 		Yt::Vector3 bottom_right;
 		const auto r = pass.viewport_rect();
-		if (pass.pixel_ray(r.top_left()).plane_intersection(_board_plane, top_left)
-			&& pass.pixel_ray(r.top_right()).plane_intersection(_board_plane, top_right)
-			&& pass.pixel_ray(r.bottom_left()).plane_intersection(_board_plane, bottom_left)
-			&& pass.pixel_ray(r.bottom_right()).plane_intersection(_board_plane, bottom_right))
+		if (pass.pixel_ray(r.topLeft()).plane_intersection(_board_plane, top_left)
+			&& pass.pixel_ray(r.topRight()).plane_intersection(_board_plane, top_right)
+			&& pass.pixel_ray(r.bottomLeft()).plane_intersection(_board_plane, bottom_left)
+			&& pass.pixel_ray(r.bottomRight()).plane_intersection(_board_plane, bottom_right))
 			_visible_area = { { top_left.x, top_left.y }, { top_right.x, top_right.y }, { bottom_right.x, bottom_right.y }, { bottom_left.x, bottom_left.y } };
 		else
 			_visible_area.reset();
@@ -96,7 +96,7 @@ public:
 
 	void present(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 	{
-		_cursor = gui.hoverArea(pass.viewport_rect());
+		_cursor = gui.addHoverArea(pass.viewport_rect());
 		Yt::Push3D projection{ pass, Yt::Matrix4::perspective(pass.viewport_rect().size(), 35, .5, 256), _state.camera_matrix() };
 		_state.update_visible_area(pass);
 		if (_cursor)
@@ -126,7 +126,7 @@ public:
 
 	void present(Yt::GuiFrame& gui, const Yt::RectF& rect)
 	{
-		_cursor = gui.dragArea(_id, rect, Yt::Key::Mouse1);
+		_cursor = gui.addDragArea(_id, rect, Yt::Key::Mouse1);
 		if (_cursor)
 			_state.set_position(to_map(rect, *_cursor) - Yt::Vector2{ 0, 10 });
 		gui.selectBlankTexture();
@@ -157,7 +157,7 @@ private:
 
 	static Yt::Vector2 to_window(const Yt::RectF& rect, const Yt::Vector2& v)
 	{
-		return rect.top_left() + Yt::Vector2{ rect.width(), rect.height() } * Yt::Vector2{ v.x + 64, 64 - v.y } / 128;
+		return rect.topLeft() + Yt::Vector2{ rect.width(), rect.height() } * Yt::Vector2{ v.x + 64, 64 - v.y } / 128;
 	}
 
 	static Yt::Quad to_window(const Yt::RectF& rect, const Yt::Quad& q)
@@ -204,26 +204,29 @@ std::optional<Yt::Vector2> Game::cursorCell() const noexcept
 
 void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 {
-	Yt::GuiLayout layout{ pass.viewport_rect() };
-	layout.scaleForHeight(100);
+	Yt::GuiLayout layout{ gui, Yt::GuiLayout::Height{ 100 } };
 	layout.setSpacing(1);
 	layout.fromBottomLeft(Yt::GuiLayout::Axis::X, 1);
 	const auto leftMinimapRect = layout.add({ 20, 20 });
-	if (gui.button("ToggleLeftMinimap", _state->_showLeftMinimap ? "Hide" : "Show", layout.add({ 8, 3 })))
+	if (gui.addButton("ToggleLeftMinimap", _state->_showLeftMinimap ? "Hide" : "Show", layout.add({ 8, 3 })))
 		_state->_showLeftMinimap = !_state->_showLeftMinimap;
 	if (_state->_showLeftMinimap)
 		_leftMinimap->present(gui, leftMinimapRect);
 	layout.fromBottomRight(Yt::GuiLayout::Axis::X, 1);
 	const auto rightMinimapRect = layout.add({ 20, 20 });
-	if (gui.button("ToggleRightMinimap", _state->_showRightMinimap ? "Hide" : "Show", layout.add({ 8, 3 })))
+	if (gui.addButton("ToggleRightMinimap", _state->_showRightMinimap ? "Hide" : "Show", layout.add({ 8, 3 })))
 		_state->_showRightMinimap = !_state->_showRightMinimap;
 	if (_state->_showRightMinimap)
 		_rightMinimap->present(gui, rightMinimapRect);
 	layout.fromTopRight(Yt::GuiLayout::Axis::Y, 1);
-	if (gui.button("ToggleInput", _state->_showInput ? "Hide input" : "Show input", layout.add({ 20, 3 })))
+	if (gui.addButton("ToggleInput", _state->_showInput ? "Hide input" : "Show input", layout.add({ 20, 3 })))
 		_state->_showInput = !_state->_showInput;
 	if (_state->_showInput)
-		gui.stringEdit("Input", _state->_inputText, layout.add({ 20, 3 }));
+	{
+		layout.setAxis(Yt::GuiLayout::Axis::X);
+		gui.addStringEdit("Input", _state->_inputText, layout.add({ 20, 3 }));
+		gui.addLabel("Input:", Yt::GuiAlignment::Right, layout.add({ 0, 3 }));
+	}
 	_world->present(gui, pass);
 }
 

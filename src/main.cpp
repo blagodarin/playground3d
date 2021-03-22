@@ -5,6 +5,7 @@
 #include <yttrium/application/application.h>
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
+#include <yttrium/gui/context.h>
 #include <yttrium/gui/font.h>
 #include <yttrium/gui/gui.h>
 #include <yttrium/gui/layout.h>
@@ -54,18 +55,19 @@ namespace
 			gui.renderer().addRect(Yt::RectF{ Yt::Vector2{ cursor }, Yt::SizeF{ 2, 2 } });
 			if (_showDebugText)
 			{
-				gui.layout().fromTopLeft(Yt::GuiLayout::Axis::Y);
-				gui.layout().setSize({ 0, 32 });
-				gui.label(fmt::format("fps={},maxFrameTime={}ms", report._fps, report._max_frame_time.count()));
-				gui.label(fmt::format("triangles={},drawCalls={}", report._triangles, report._draw_calls));
-				gui.label(fmt::format("textureSwitches=(total={},redundant={})", report._texture_switches, report._extra_texture_switches));
-				gui.label(fmt::format("shaderSwitches=(total={},redundant={})", report._shader_switches, report._extra_shader_switches));
+				Yt::GuiLayout layout{ gui };
+				layout.fromTopLeft(Yt::GuiLayout::Axis::Y);
+				layout.setSize({ 0, 32 });
+				gui.addLabel(fmt::format("fps={},maxFrameTime={}ms", report._fps, report._max_frame_time.count()));
+				gui.addLabel(fmt::format("triangles={},drawCalls={}", report._triangles, report._draw_calls));
+				gui.addLabel(fmt::format("textureSwitches=(total={},redundant={})", report._texture_switches, report._extra_texture_switches));
+				gui.addLabel(fmt::format("shaderSwitches=(total={},redundant={})", report._shader_switches, report._extra_shader_switches));
 				const auto camera = game.cameraPosition();
-				gui.label(fmt::format("camera=(x={},y={},z={})", camera.x, camera.y, camera.z));
+				gui.addLabel(fmt::format("camera=(x={},y={},z={})", camera.x, camera.y, camera.z));
 				if (const auto cell = game.cursorCell())
-					gui.label(fmt::format("cell=(x={},y={})", static_cast<int>(cell->x), static_cast<int>(cell->y)));
+					gui.addLabel(fmt::format("cell=(x={},y={})", static_cast<int>(cell->x), static_cast<int>(cell->y)));
 				else
-					gui.label("cell=()");
+					gui.addLabel("cell=()");
 			}
 		}
 
@@ -86,13 +88,11 @@ int ymain(int, char**)
 	Yt::Application application;
 	Yt::Window window{ application, "Playground3D" };
 	Yt::Viewport viewport{ window };
-	std::shared_ptr<const Yt::Font> font;
+	Yt::GuiContext gui{ window }; // TODO: Make GuiContextData an interface for receiving window events.
 	if (const auto fontSource = storage.open("data/fonts/SourceCodePro-Regular.ttf"))
-		font = Yt::Font::load(*fontSource, viewport.render_manager());
-	Yt::GuiState guiState{ window };
-	guiState.setDefaultFont(font);
-	window.on_key_event([&guiState](const Yt::KeyEvent& event) { guiState.processKeyEvent(event); });
-	window.on_text_input([&guiState](std::string_view text) { guiState.processTextInput(text); });
+		gui.setDefaultFont(Yt::Font::load(*fontSource, viewport.render_manager()));
+	window.on_key_event([&gui](const Yt::KeyEvent& event) { gui.processKeyEvent(event); });
+	window.on_text_input([&gui](std::string_view text) { gui.processTextInput(text); });
 	Yt::Renderer2D rendered2d{ viewport };
 	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
 	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
@@ -101,16 +101,16 @@ int ymain(int, char**)
 	window.show();
 	for (Yt::RenderClock clock; application.process_events(); clock.advance())
 	{
-		Yt::GuiFrame gui{ guiState, rendered2d };
+		Yt::GuiFrame guiFrame{ gui, rendered2d };
 		game.update(window, std::chrono::duration_cast<std::chrono::milliseconds>(clock.last_frame_duration()));
 		viewport.render(clock.next_report(), [&](Yt::RenderPass& pass) {
-			game.mainScreen(gui, pass);
-			debugGraphics.present(gui, clock.last_report(), game, window.cursor());
+			game.mainScreen(guiFrame, pass);
+			debugGraphics.present(guiFrame, clock.last_report(), game, window.cursor());
 			rendered2d.draw(pass);
 		});
-		if (gui.captureKeyDown(Yt::Key::F10))
+		if (guiFrame.captureKeyDown(Yt::Key::F10))
 			viewport.take_screenshot().save_as_screenshot(Yt::ImageFormat::Jpeg, 90);
-		if (gui.captureKeyDown(Yt::Key::Escape))
+		if (guiFrame.captureKeyDown(Yt::Key::Escape))
 			window.close();
 	}
 	return 0;

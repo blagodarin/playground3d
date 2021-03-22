@@ -12,7 +12,7 @@ set(YTTRIUM_WITH_JPEG ON) # For screenshots.
 set(YTTRIUM_WITH_OGGVORBIS OFF)
 
 include(FetchContent)
-FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG b78a5efb71f0eaa52b8a8157d81634813da21129)
+FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG 5bb3c9303b180ce142774589f9367202f366945e)
 FetchContent_MakeAvailable(Yttrium)
 
 find_package(fmt REQUIRED) # For debug text.
