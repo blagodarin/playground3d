@@ -48,7 +48,7 @@ namespace
 
 		void present(Yt::GuiFrame& gui, const Yt::RenderReport& report, const Game& game, const Yt::Point& cursor)
 		{
-			if (gui.captureKeyDown(Yt::Key::F1))
+			if (gui.takeKeyPress(Yt::Key::F1))
 				_showDebugText = !_showDebugText;
 			gui.selectBlankTexture();
 			gui.renderer().setColor(Yt::Bgra32::yellow());
@@ -108,9 +108,9 @@ int ymain(int, char**)
 			debugGraphics.present(guiFrame, clock.last_report(), game, window.cursor());
 			rendered2d.draw(pass);
 		});
-		if (guiFrame.captureKeyDown(Yt::Key::F10))
+		if (guiFrame.takeKeyPress(Yt::Key::F10))
 			viewport.take_screenshot().save_as_screenshot(Yt::ImageFormat::Jpeg, 90);
-		if (guiFrame.captureKeyDown(Yt::Key::Escape))
+		if (guiFrame.takeKeyPress(Yt::Key::Escape))
 			window.close();
 	}
 	return 0;
