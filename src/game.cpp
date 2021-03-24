@@ -6,12 +6,13 @@
 
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
+#include <yttrium/geometry/euler.h>
+#include <yttrium/geometry/line.h>
+#include <yttrium/geometry/matrix.h>
+#include <yttrium/geometry/quad.h>
+#include <yttrium/geometry/rect.h>
 #include <yttrium/gui/gui.h>
 #include <yttrium/gui/layout.h>
-#include <yttrium/math/line.h>
-#include <yttrium/math/matrix.h>
-#include <yttrium/math/quad.h>
-#include <yttrium/math/rect.h>
 #include <yttrium/renderer/2d.h>
 #include <yttrium/renderer/modifiers.h>
 #include <yttrium/renderer/pass.h>
@@ -19,6 +20,8 @@
 
 #include "model.hpp"
 #include "settings.hpp"
+
+#include <numbers>
 
 #include <fmt/format.h>
 

@@ -5,6 +5,8 @@
 #include <yttrium/application/application.h>
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
+#include <yttrium/geometry/rect.h>
+#include <yttrium/geometry/vector.h>
 #include <yttrium/gui/context.h>
 #include <yttrium/gui/font.h>
 #include <yttrium/gui/gui.h>
@@ -13,13 +15,10 @@
 #include <yttrium/image/utils.h>
 #include <yttrium/logger.h>
 #include <yttrium/main.h>
-#include <yttrium/math/color.h>
-#include <yttrium/math/rect.h>
-#include <yttrium/math/vector.h>
 #include <yttrium/renderer/2d.h>
 #include <yttrium/renderer/report.h>
+#include <yttrium/renderer/resource_loader.h>
 #include <yttrium/renderer/viewport.h>
-#include <yttrium/resource_loader.h>
 #include <yttrium/storage/paths.h>
 #include <yttrium/storage/source.h>
 #include <yttrium/storage/storage.h>
@@ -94,7 +93,7 @@ int ymain(int, char**)
 	window.on_key_event([&gui](const Yt::KeyEvent& event) { gui.processKeyEvent(event); });
 	window.on_text_input([&gui](std::string_view text) { gui.processTextInput(text); });
 	Yt::Renderer2D rendered2d{ viewport };
-	Yt::ResourceLoader resourceLoader{ storage, &viewport.render_manager() };
+	Yt::ResourceLoader resourceLoader{ storage, viewport.render_manager() };
 	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
 	Game game{ resourceLoader, settings };
 	DebugGraphics debugGraphics{ settings };

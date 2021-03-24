@@ -4,12 +4,12 @@
 
 #include "model.hpp"
 
-#include <yttrium/math/matrix.h>
+#include <yttrium/geometry/matrix.h>
 #include <yttrium/renderer/material.h>
 #include <yttrium/renderer/mesh.h>
 #include <yttrium/renderer/modifiers.h>
 #include <yttrium/renderer/pass.h>
-#include <yttrium/resource_loader.h>
+#include <yttrium/renderer/resource_loader.h>
 
 Model::Model(Yt::ResourceLoader& resource_loader, std::string_view mesh, std::string_view material)
 	: _mesh{ resource_loader.load_mesh(mesh) }
