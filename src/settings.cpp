@@ -4,7 +4,7 @@
 
 #include "settings.hpp"
 
-#include <yttrium/exceptions.h>
+#include <yttrium/base/exceptions.h>
 #include <yttrium/ion/reader.h>
 #include <yttrium/ion/writer.h>
 #include <yttrium/storage/source.h>

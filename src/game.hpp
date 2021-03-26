@@ -4,7 +4,8 @@
 
 #pragma once
 
-#include <chrono>
+#include <yttrium/base/clock.h>
+
 #include <memory>
 #include <optional>
 
@@ -29,10 +30,11 @@ public:
 	Yt::Vector3 cameraPosition() const noexcept;
 	std::optional<Yt::Vector2> cursorCell() const noexcept;
 	void mainScreen(Yt::GuiFrame&, Yt::RenderPass&);
-	void update(const Yt::Window&, std::chrono::milliseconds);
+	void update(const Yt::Window&);
 
 private:
 	Settings& _settings;
+	Yt::Clock _clock;
 	const std::unique_ptr<class GameState> _state;
 	const std::unique_ptr<class WorldWidget> _world;
 	const std::unique_ptr<class MinimapWidget> _leftMinimap;

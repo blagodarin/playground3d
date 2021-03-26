@@ -6,6 +6,7 @@
 
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
+#include <yttrium/base/string.h>
 #include <yttrium/geometry/euler.h>
 #include <yttrium/geometry/line.h>
 #include <yttrium/geometry/matrix.h>
@@ -16,7 +17,6 @@
 #include <yttrium/renderer/2d.h>
 #include <yttrium/renderer/modifiers.h>
 #include <yttrium/renderer/pass.h>
-#include <yttrium/utils/string.h>
 
 #include "model.hpp"
 #include "settings.hpp"
@@ -233,8 +233,9 @@ void Game::mainScreen(Yt::GuiFrame& gui, Yt::RenderPass& pass)
 	_world->present(gui, pass);
 }
 
-void Game::update(const Yt::Window& window, std::chrono::milliseconds advance)
+void Game::update(const Yt::Window& window)
 {
+	const auto advance = _clock.tick();
 	const bool move_forward = window.cursor()._y < 10;
 	const bool move_backward = window.size()._height - window.cursor()._y <= 10;
 	const bool move_left = window.cursor()._x < 10;
@@ -242,7 +243,7 @@ void Game::update(const Yt::Window& window, std::chrono::milliseconds advance)
 	if (move_forward != move_backward || move_left != move_right)
 	{
 		constexpr auto speed = 16.f; // Units per second.
-		const auto distance = static_cast<float>(advance.count()) * speed / 1000;
+		const auto distance = static_cast<float>(advance) * speed / 1000;
 		const auto offset = (move_forward || move_backward) && (move_left || move_right) ? distance / std::numbers::sqrt2_v<float> : distance;
 		const auto x_movement = move_left ? -offset : (move_right ? offset : 0);
 		const auto y_movement = move_forward ? offset : (move_backward ? -offset : 0);

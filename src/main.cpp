@@ -5,6 +5,8 @@
 #include <yttrium/application/application.h>
 #include <yttrium/application/key.h>
 #include <yttrium/application/window.h>
+#include <yttrium/base/clock.h>
+#include <yttrium/base/logger.h>
 #include <yttrium/geometry/rect.h>
 #include <yttrium/geometry/vector.h>
 #include <yttrium/gui/context.h>
@@ -13,10 +15,9 @@
 #include <yttrium/gui/layout.h>
 #include <yttrium/image/image.h>
 #include <yttrium/image/utils.h>
-#include <yttrium/logger.h>
 #include <yttrium/main.h>
 #include <yttrium/renderer/2d.h>
-#include <yttrium/renderer/report.h>
+#include <yttrium/renderer/metrics.h>
 #include <yttrium/renderer/resource_loader.h>
 #include <yttrium/renderer/viewport.h>
 #include <yttrium/storage/paths.h>
@@ -45,7 +46,7 @@ namespace
 			_settings.set("DebugText", { _showDebugText ? "1" : "0" });
 		}
 
-		void present(Yt::GuiFrame& gui, const Yt::RenderReport& report, const Game& game, const Yt::Point& cursor)
+		void present(Yt::GuiFrame& gui, const Game& game, const Yt::Point& cursor)
 		{
 			if (gui.takeKeyPress(Yt::Key::F1))
 				_showDebugText = !_showDebugText;
@@ -57,10 +58,10 @@ namespace
 				Yt::GuiLayout layout{ gui };
 				layout.fromTopLeft(Yt::GuiLayout::Axis::Y);
 				layout.setSize({ 0, 32 });
-				gui.addLabel(fmt::format("fps={},maxFrameTime={}ms", report._fps, report._max_frame_time.count()));
-				gui.addLabel(fmt::format("triangles={},drawCalls={}", report._triangles, report._draw_calls));
-				gui.addLabel(fmt::format("textureSwitches=(total={},redundant={})", report._texture_switches, report._extra_texture_switches));
-				gui.addLabel(fmt::format("shaderSwitches=(total={},redundant={})", report._shader_switches, report._extra_shader_switches));
+				gui.addLabel(fmt::format("fps={},maxFrameTime={}ms", _clockReport._framesPerSecond, _clockReport._maxFrameTime));
+				gui.addLabel(fmt::format("triangles={},drawCalls={}", _metrics._triangles, _metrics._draw_calls));
+				gui.addLabel(fmt::format("textureSwitches=(total={},redundant={})", _metrics._texture_switches, _metrics._extra_texture_switches));
+				gui.addLabel(fmt::format("shaderSwitches=(total={},redundant={})", _metrics._shader_switches, _metrics._extra_shader_switches));
 				const auto camera = game.cameraPosition();
 				gui.addLabel(fmt::format("camera=(x={},y={},z={})", camera.x, camera.y, camera.z));
 				if (const auto cell = game.cursorCell())
@@ -70,9 +71,23 @@ namespace
 			}
 		}
 
+		void update(const Yt::RenderMetrics& metrics)
+		{
+			_nextMetrics += metrics;
+			if (_clock.update(_clockReport))
+			{
+				_metrics = _nextMetrics / _clockReport._frameCount;
+				_nextMetrics = {};
+			}
+		}
+
 	private:
 		Settings& _settings;
 		bool _showDebugText = false;
+		Yt::FrameClock _clock;
+		Yt::FrameClock::Report _clockReport;
+		Yt::RenderMetrics _metrics;
+		Yt::RenderMetrics _nextMetrics;
 	};
 }
 
@@ -87,24 +102,23 @@ int ymain(int, char**)
 	Yt::Application application;
 	Yt::Window window{ application, "Playground3D" };
 	Yt::Viewport viewport{ window };
-	Yt::GuiContext gui{ window }; // TODO: Make GuiContextData an interface for receiving window events.
+	Yt::GuiContext gui{ window };
 	if (const auto fontSource = storage.open("data/fonts/SourceCodePro-Regular.ttf"))
 		gui.setDefaultFont(Yt::Font::load(*fontSource, viewport.render_manager()));
-	window.on_key_event([&gui](const Yt::KeyEvent& event) { gui.processKeyEvent(event); });
-	window.on_text_input([&gui](std::string_view text) { gui.processTextInput(text); });
 	Yt::Renderer2D rendered2d{ viewport };
 	Yt::ResourceLoader resourceLoader{ storage, viewport.render_manager() };
 	Settings settings{ Yt::user_data_path("Playground3D") / "settings.ion" };
 	Game game{ resourceLoader, settings };
 	DebugGraphics debugGraphics{ settings };
 	window.show();
-	for (Yt::RenderClock clock; application.process_events(); clock.advance())
+	while (application.process_events(gui.eventCallbacks()))
 	{
+		debugGraphics.update(viewport.metrics());
 		Yt::GuiFrame guiFrame{ gui, rendered2d };
-		game.update(window, std::chrono::duration_cast<std::chrono::milliseconds>(clock.last_frame_duration()));
-		viewport.render(clock.next_report(), [&](Yt::RenderPass& pass) {
+		game.update(window);
+		viewport.render([&](Yt::RenderPass& pass) {
 			game.mainScreen(guiFrame, pass);
-			debugGraphics.present(guiFrame, clock.last_report(), game, window.cursor());
+			debugGraphics.present(guiFrame, game, window.cursor());
 			rendered2d.draw(pass);
 		});
 		if (guiFrame.takeKeyPress(Yt::Key::F10))
