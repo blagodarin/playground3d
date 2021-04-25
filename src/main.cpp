@@ -14,7 +14,6 @@
 #include <yttrium/gui/gui.h>
 #include <yttrium/gui/layout.h>
 #include <yttrium/image/image.h>
-#include <yttrium/image/utils.h>
 #include <yttrium/main.h>
 #include <yttrium/renderer/2d.h>
 #include <yttrium/renderer/metrics.h>
@@ -95,10 +94,10 @@ int ymain(int, char**)
 {
 	Yt::Logger logger;
 	Yt::Storage storage{ Yt::Storage::UseFileSystem::Never };
-	storage.attach_package("playground3d.ypq");
-	storage.attach_buffer("data/checkerboard.tga", Yt::make_bgra32_tga(128, 128, [](size_t x, size_t y) {
+	storage.attach_package(Yt::Source::from("playground3d.yp"));
+	storage.attach_buffer("data/checkerboard.tga", Yt::Image::generateBgra32(128, 128, [](size_t x, size_t y) {
 		return ((x ^ y) & 1) ? Yt::Bgra32::grayscale(0xdd) : Yt::Bgra32::black();
-	}));
+	}).to_buffer(Yt::ImageFormat::Tga));
 	Yt::Application application;
 	Yt::Window window{ application, "Playground3D" };
 	Yt::Viewport viewport{ window };

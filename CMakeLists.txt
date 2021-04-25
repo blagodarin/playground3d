@@ -8,11 +8,11 @@ project(Playground3D LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(YTTRIUM_WITH_JPEG ON) # For screenshots.
-set(YTTRIUM_WITH_OGGVORBIS OFF)
+set(YTTRIUM_IMAGE_JPEG ON) # For screenshots.
+set(YTTRIUM_IMAGE_TGA ON) # For generated images.
 
 include(FetchContent)
-FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG d4a4858c0a7fd2c02f44f94461312381cb89b335)
+FetchContent_Declare(Yttrium GIT_REPOSITORY https://github.com/blagodarin/yttrium.git GIT_TAG 7532eb4862956b8c78a6ec260554c39cc5108850)
 FetchContent_MakeAvailable(Yttrium)
 
 find_package(fmt REQUIRED) # For debug text.
@@ -30,7 +30,7 @@ target_link_libraries(playground3d PRIVATE Y_application Y_gui Y_image Y_ion Y_m
 set_target_properties(playground3d PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 yttrium_target_package(playground3d
-	OUTPUT playground3d.ypq
+	OUTPUT playground3d.yp
 	INDEX data/index.txt)
 
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT playground3d)
